@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Security Camera System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            min-height: 100vh;
+        }
+
+        .dark body {
+            background: linear-gradient(135deg, #1f2937, #111827);
+        }
+
+        .nav-container {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .nav-container {
+            background: rgba(17, 24, 39, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg fixed w-full z-10">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-white">Security Camera System</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="darkModeToggle" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <button class="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200" onclick="window.location.href='dashboard.html'">
+                        Dashboard
+                    </button>
+                    <button class="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200" onclick="window.location.href='recordings.html'">
+                        View Recordings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8 pt-24">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">About Our Team</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Team Member 1 -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
+                    <div class="w-32 h-32 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                        <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Arun Sangwan</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Backend Developement & JavaScript</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm"></p>
+                </div>
+
+                <!-- Team Member 2 -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
+                    <div class="w-32 h-32 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                        <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Adidev Nayana</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Frontend Developement & JavaScript</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm"></p>
+                </div>
+
+                <!-- Team Member 3 -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
+                    <div class="w-32 h-32 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                        <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Hemant Lamba</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Backend and Database Developement</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm"></p>
+                </div>
+
+                <!-- Team Member 4 -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
+                    <div class="w-32 h-32 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                        <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Shubham Singh</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Frontend Design & Developement</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm"></p>
+                </div>
+            </div>
+
+            <div class="mt-12">
+                <h3 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">Our Mission</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">
+                    We are dedicated to providing state-of-the-art security camera solutions that ensure safety and peace of mind for our users. 
+                    Our team combines expertise in security systems, software development, and user experience design to create a comprehensive 
+                    security solution that meets the needs of modern users.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">Our Vision</h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    To become the leading provider of intelligent security camera systems, leveraging cutting-edge technology to create 
+                    safer environments for homes and businesses worldwide.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Dark mode functionality
+        function initDarkMode() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            
+            const currentTheme = localStorage.getItem('theme') || (prefersDarkScheme.matches ? 'dark' : 'light');
+            document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+            
+            updateDarkModeIcon(currentTheme === 'dark');
+            
+            darkModeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                updateDarkModeIcon(isDark);
+            });
+        }
+        
+        function updateDarkModeIcon(isDark) {
+            const icon = document.querySelector('#darkModeToggle svg');
+            if (isDark) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initDarkMode);
+    </script>
+</body>
+</html> 

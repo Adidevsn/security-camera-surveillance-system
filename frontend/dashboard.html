@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Security Camera System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Modern Dashboard Styles */
+        body {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            min-height: 100vh;
+        }
+
+        .dark body {
+            background: linear-gradient(135deg, #1f2937, #111827);
+        }
+
+        .nav-container {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .nav-container {
+            background: rgba(17, 24, 39, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .camera-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .camera-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .camera-feed {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #1f2937;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .face-box {
+            position: absolute;
+            border: 3px solid #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            z-index: 10;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+                border-color: #ef4444;
+            }
+            50% { 
+                box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0.6);
+                border-color: #f87171;
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+                border-color: #ef4444;
+            }
+        }
+
+        .face-box::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            animation: borderPulse 2s infinite;
+        }
+
+        @keyframes borderPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .alert-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ef4444;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            z-index: 1000;
+            animation: slideDown 0.5s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        .settings-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .quick-action-button {
+            background: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-action-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.online {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-badge.offline {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 64px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.expanded {
+            width: 250px;
+        }
+
+        .dark .sidebar {
+            background: #1f2937;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            min-height: 80px;
+        }
+
+        .dark .sidebar-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+        }
+
+        .sidebar-title {
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateX(0);
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .sidebar:not(.expanded) .sidebar-title {
+            opacity: 0;
+            transform: translateX(-20px);
+            width: 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .sidebar-menu {
+            padding: 1.5rem 0.75rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.5rem;
+            color: #4b5563;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            justify-content: center;
+        }
+
+        .sidebar.expanded .sidebar-menu-item {
+            justify-content: flex-start;
+            padding: 0.75rem 1rem;
+        }
+
+        .dark .sidebar-menu-item {
+            color: #d1d5db;
+        }
+
+        .sidebar-menu-item:hover {
+            background: #f3f4f6;
+            transform: translateX(5px);
+        }
+
+        .dark .sidebar-menu-item:hover {
+            background: #374151;
+        }
+
+        .sidebar-menu-item.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .sidebar-menu-item.active {
+            background: #2563eb;
+        }
+
+        .sidebar-menu-item svg {
+            width: 1.75rem;
+            height: 1.75rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.expanded .sidebar-menu-item svg {
+            margin-right: 1rem;
+        }
+
+        .sidebar-menu-item span {
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .sidebar:not(.expanded) .sidebar-menu-item span {
+            opacity: 0;
+            transform: translateX(-20px);
+            width: 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 64px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .main-content.expanded {
+            margin-left: 250px;
+        }
+
+        .nav-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: 64px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .main-content.expanded .nav-container {
+            left: 250px;
+        }
+
+        /* Add smooth transition for all elements */
+        * {
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Logout Button Styles */
+        .logout-button {
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logout-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .logout-button:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .logout-button:hover::before {
+            left: 100%;
+        }
+
+        .dark .logout-button {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .dark .logout-button:hover {
+            background: linear-gradient(135deg, #991b1b, #7f1d1d);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .logout-button svg {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .logout-button:hover svg {
+            transform: translateX(4px) rotate(-45deg);
+        }
+
+        .logout-button span {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Sidebar -->
+    <div class="sidebar dark:bg-gray-800">
+        <div class="sidebar-header dark:border-gray-700">
+            <h2 class="sidebar-title text-xl font-bold">Security System</h2>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+        <div class="sidebar-menu">
+            <a href="dashboard.html" class="sidebar-menu-item active">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="recordings.html" class="sidebar-menu-item">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Recordings</span>
+            </a>
+            <a href="about.html" class="sidebar-menu-item">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>About Us</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Navigation -->
+        <nav class="nav-container bg-white dark:bg-gray-800 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-end h-16">
+                    <div class="flex items-center space-x-4">
+                        <button id="darkModeToggle" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">
+                            <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </button>
+                        <button class="logout-button" data-action="logout">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 py-8 pt-24">
+            <!-- Status Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-200">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">System Status</p>
+                            <p class="text-lg font-semibold text-gray-800 dark:text-white">All Systems Online</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-200">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Recordings</p>
+                            <p class="text-lg font-semibold text-gray-800 dark:text-white">3 Cameras</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-200">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                            <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Motion</p>
+                            <p class="text-lg font-semibold text-gray-800 dark:text-white">2 min ago</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-200">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                            <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Security Level</p>
+                            <p class="text-lg font-semibold text-gray-800 dark:text-white">High</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Camera Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Camera 1 -->
+                <div class="camera-card bg-white dark:bg-gray-800">
+                    <div class="bg-gray-800 flex items-center justify-center text-white aspect-video rounded-t-lg overflow-hidden relative">
+                        <div class="absolute top-2 right-2">
+                            <span class="status-badge online">Active</span>
+                        </div>
+                        <video id="frontDoorCamera" class="w-full h-full object-cover" autoplay playsinline></video>
+                        <div class="absolute bottom-2 left-2 flex space-x-2">
+                            <button onclick="toggleRecording('frontDoorCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="takeSnapshot('frontDoorCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-gray-800 dark:text-white">Front Door Camera</h4>
+                            <span class="status-badge online">Online</span>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Laptop Camera</p>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 bg-primary-600 dark:bg-primary-700 text-white py-2 px-3 rounded text-sm hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors duration-200" onclick="toggleFullscreen('frontDoorCamera')">View</button>
+                            <button class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200" onclick="showSettings('frontDoorCamera')">Settings</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Camera 2 -->
+                <div class="camera-card bg-white dark:bg-gray-800">
+                    <div class="bg-gray-800 flex items-center justify-center text-white aspect-video rounded-t-lg overflow-hidden relative">
+                        <div class="absolute top-2 right-2">
+                            <span class="status-badge online">Active</span>
+                        </div>
+                        <video id="backYardCamera" class="w-full h-full object-cover" autoplay playsinline></video>
+                        <div class="absolute bottom-2 left-2 flex space-x-2">
+                            <button onclick="toggleRecording('backYardCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="takeSnapshot('backYardCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-gray-800 dark:text-white">Back Yard Camera</h4>
+                            <span class="status-badge online">Online</span>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Laptop Camera</p>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 bg-primary-600 dark:bg-primary-700 text-white py-2 px-3 rounded text-sm hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors duration-200" onclick="toggleFullscreen('backYardCamera')">View</button>
+                            <button class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200" onclick="showSettings('backYardCamera')">Settings</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Camera 3 -->
+                <div class="camera-card bg-white dark:bg-gray-800">
+                    <div class="bg-gray-800 flex items-center justify-center text-white aspect-video rounded-t-lg overflow-hidden relative">
+                        <div class="absolute top-2 right-2">
+                            <span class="status-badge online">Active</span>
+                        </div>
+                        <video id="garageCamera" class="w-full h-full object-cover" autoplay playsinline></video>
+                        <div class="absolute bottom-2 left-2 flex space-x-2">
+                            <button onclick="toggleRecording('garageCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="takeSnapshot('garageCamera')" class="control-button">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-gray-800 dark:text-white">Garage Camera</h4>
+                            <span class="status-badge online">Online</span>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Laptop Camera</p>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 bg-primary-600 dark:bg-primary-700 text-white py-2 px-3 rounded text-sm hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors duration-200" onclick="toggleFullscreen('garageCamera')">View</button>
+                            <button class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200" onclick="showSettings('garageCamera')">Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <button onclick="startAllRecordings()" class="quick-action-button bg-primary-600 dark:bg-primary-700 text-white hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                    <div class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Start Recording
+                    </div>
+                </button>
+                <button onclick="stopAllRecordings()" class="quick-action-button bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                    <div class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                        </svg>
+                        Stop Recording
+                    </div>
+                </button>
+                <button onclick="showAddCameraModal()" class="quick-action-button bg-gray-600 dark:bg-gray-700 text-white hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                    <div class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Camera
+                    </div>
+                </button>
+                <button onclick="showSystemSettings()" class="quick-action-button bg-gray-600 dark:bg-gray-700 text-white hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                    <div class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Settings
+                    </div>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden bg-white dark:bg-gray-800">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Camera Settings</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Camera Name</label>
+                <input type="text" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500" id="cameraName">
+                <p id="currentCameraName" class="mt-1 text-sm text-gray-500 dark:text-gray-400"></p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution</label>
+                <select class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500" id="cameraResolution">
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motion Detection</label>
+                <div class="mt-2">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-primary-600 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="motionDetection">
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">Enable Motion Detection</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeSettings()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Cancel</button>
+                <button onclick="saveSettings()" class="px-4 py-2 bg-primary-600 dark:bg-primary-700 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="assets/js/main.js"></script>
+    <script>
+        let model = null;
+        let isDetecting = false;
+        let lastAlertTime = 0;
+        const ALERT_COOLDOWN = 30000; // 30 seconds between alerts
+        let currentCameraId = null;
+        let faceDetectionInterval = null;
+        let mediaRecorders = {};
+        let recordedChunks = {};
+        let recordingTimers = {};
+
+        // Initialize TensorFlow.js model
+        async function loadModel() {
+            try {
+                model = await faceDetection.createDetector(
+                    faceDetection.SupportedModels.MediaPipeFaceDetector,
+                    {
+                        runtime: 'tfjs',
+                        modelType: 'short',
+                        maxFaces: 5,
+                        detectorModelUrl: 'https://tfhub.dev/mediapipe/tfjs-model/face_detection/short/1'
+                    }
+                );
+                console.log('Face detection model loaded successfully');
+            } catch (err) {
+                console.error('Error loading face detection model:', err);
+            }
+        }
+
+        // Function to detect faces in video stream
+        async function detectFaces(video, canvas, cameraId) {
+            if (!model || isDetecting) return;
+
+            isDetecting = true;
+            try {
+                const faces = await model.estimateFaces(video);
+                
+                // Clear previous face boxes
+                const existingBoxes = video.parentElement.querySelectorAll('.face-box');
+                existingBoxes.forEach(box => box.remove());
+
+                if (faces.length > 0) {
+                    console.log(`Detected ${faces.length} faces in ${cameraId}`);
+                    
+                    // Draw face boxes
+                    faces.forEach(face => {
+                        const box = face.box;
+                        const faceBox = document.createElement('div');
+                        faceBox.className = 'face-box';
+                        
+                        // Calculate position and size based on video dimensions
+                        const videoRect = video.getBoundingClientRect();
+                        const scaleX = videoRect.width / video.videoWidth;
+                        const scaleY = videoRect.height / video.videoHeight;
+                        
+                        // Set face box position and size
+                        faceBox.style.left = `${box.xMin * scaleX}px`;
+                        faceBox.style.top = `${box.yMin * scaleY}px`;
+                        faceBox.style.width = `${(box.xMax - box.xMin) * scaleX}px`;
+                        faceBox.style.height = `${(box.yMax - box.yMin) * scaleY}px`;
+                        
+                        // Add face label
+                        const label = document.createElement('div');
+                        label.className = 'absolute -top-6 left-0 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold';
+                        label.textContent = 'Human Detected';
+                        faceBox.appendChild(label);
+                        
+                        // Add confidence score
+                        const confidence = document.createElement('div');
+                        confidence.className = 'absolute -top-6 right-0 bg-red-500 text-white px-2 py-1 rounded text-xs';
+                        confidence.textContent = `${Math.round(face.score * 100)}%`;
+                        faceBox.appendChild(confidence);
+                        
+                        video.parentElement.appendChild(faceBox);
+
+                        // Check if we should show an alert
+                        const now = Date.now();
+                        if (now - lastAlertTime > ALERT_COOLDOWN) {
+                            showAlert(cameraId);
+                            lastAlertTime = now;
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error detecting faces:', err);
+            }
+            isDetecting = false;
+        }
+
+        // Function to show alert
+        function showAlert(cameraId) {
+            const alertBanner = document.createElement('div');
+            alertBanner.className = 'alert-banner';
+            alertBanner.innerHTML = `
+                <div class="flex items-center justify-center space-x-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Unusual activity detected in ${cameraId}!</span>
+                </div>
+            `;
+            document.body.appendChild(alertBanner);
+            
+            // Play alert sound
+            const audio = new Audio('assets/alert.mp3');
+            audio.play().catch(err => console.error('Error playing alert sound:', err));
+            
+            // Remove alert after 5 seconds
+            setTimeout(() => {
+                alertBanner.remove();
+            }, 5000);
+        }
+
+        // Function to toggle fullscreen for camera feeds
+        function toggleFullscreen(cameraId) {
+            const container = document.getElementById(cameraId).parentElement;
+            const video = document.getElementById(cameraId);
+            
+            if (!document.fullscreenElement) {
+                container.classList.add('fullscreen');
+                container.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+                
+                // Adjust video size for fullscreen
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'contain';
+                
+                // Start face detection in fullscreen
+                const canvas = container.querySelector('canvas');
+                if (canvas) {
+                    faceDetectionInterval = setInterval(() => {
+                        detectFaces(video, canvas, cameraId);
+                    }, 100);
+                }
+            } else {
+                document.exitFullscreen();
+                container.classList.remove('fullscreen');
+                
+                // Reset video size
+                video.style.width = '';
+                video.style.height = '';
+                video.style.objectFit = '';
+                
+                // Stop face detection interval
+                if (faceDetectionInterval) {
+                    clearInterval(faceDetectionInterval);
+                    faceDetectionInterval = null;
+                }
+            }
+        }
+
+        // Function to handle recording
+        function toggleRecording(cameraId) {
+            const video = document.getElementById(cameraId);
+            const button = event.currentTarget;
+            
+            if (!video.recording) {
+                // Start recording
+                startRecording(cameraId);
+                button.classList.add('bg-red-500');
+                button.innerHTML = `
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                `;
+            } else {
+                // Stop recording
+                stopRecording(cameraId);
+                button.classList.remove('bg-red-500');
+                button.innerHTML = `
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                `;
+            }
+        }
+
+        // Function to start recording
+        function startRecording(cameraId) {
+            const video = document.getElementById(cameraId);
+            const stream = video.srcObject;
+            
+            if (!stream) {
+                console.error('No stream available for recording');
+                return;
+            }
+
+            // Create MediaRecorder
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 2500000
+            });
+
+            // Store chunks
+            recordedChunks[cameraId] = [];
+            mediaRecorders[cameraId] = mediaRecorder;
+
+            // Handle data available
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks[cameraId].push(event.data);
+                }
+            };
+
+            // Start recording
+            mediaRecorder.start(1000); // Collect data every second
+            video.recording = true;
+
+            // Start recording timer
+            const startTime = Date.now();
+            recordingTimers[cameraId] = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const timerDisplay = document.createElement('div');
+                timerDisplay.className = 'absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm';
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                video.parentElement.querySelector('.recording-timer')?.remove();
+                video.parentElement.appendChild(timerDisplay);
+                timerDisplay.classList.add('recording-timer');
+            }, 1000);
+        }
+
+        // Function to stop recording
+        function stopRecording(cameraId) {
+            const video = document.getElementById(cameraId);
+            const mediaRecorder = mediaRecorders[cameraId];
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                return;
+            }
+
+            // Stop recording
+            mediaRecorder.stop();
+            video.recording = false;
+
+            // Clear recording timer
+            clearInterval(recordingTimers[cameraId]);
+            video.parentElement.querySelector('.recording-timer')?.remove();
+
+            // Handle recording complete
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks[cameraId], { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `recording-${cameraId}-${new Date().toISOString()}.webm`;
+                
+                // Show download notification
+                const notification = document.createElement('div');
+                notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                notification.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Recording saved! Click to download</span>
+                    </div>
+                `;
+                notification.onclick = () => {
+                    link.click();
+                    notification.remove();
+                };
+                document.body.appendChild(notification);
+                
+                // Remove notification after 5 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            };
+        }
+
+        // Function to start recording on all cameras
+        function startAllRecordings() {
+            const cameras = ['frontDoorCamera', 'backYardCamera', 'garageCamera'];
+            cameras.forEach(cameraId => {
+                const video = document.getElementById(cameraId);
+                if (!video.recording) {
+                    startRecording(cameraId);
+                    const button = video.parentElement.querySelector('button[onclick*="toggleRecording"]');
+                    if (button) {
+                        button.classList.add('bg-red-500');
+                        button.innerHTML = `
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                            </svg>
+                        `;
+                    }
+                }
+            });
+        }
+
+        // Function to take snapshot
+        function takeSnapshot(cameraId) {
+            const video = document.getElementById(cameraId);
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `snapshot-${cameraId}-${new Date().toISOString()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Function to show camera settings
+        function showSettings(cameraId) {
+            currentCameraId = cameraId;
+            const settingsPanel = document.getElementById('settingsPanel');
+            const cameraName = document.getElementById('cameraName');
+            const currentCameraName = document.getElementById('currentCameraName');
+            const cameraElement = document.querySelector(`[data-camera-id="${cameraId}"]`);
+            
+            // Set current camera name
+            if (cameraElement) {
+                const name = cameraElement.querySelector('h4').textContent;
+                cameraName.value = name;
+                currentCameraName.textContent = `Current name: ${name}`;
+            }
+            
+            settingsPanel.classList.remove('hidden');
+            document.body.appendChild(createOverlay());
+        }
+
+        // Function to close settings
+        function closeSettings() {
+            const settingsPanel = document.getElementById('settingsPanel');
+            settingsPanel.classList.add('hidden');
+            const overlay = document.querySelector('.overlay');
+            if (overlay) overlay.remove();
+        }
+
+        // Function to save settings
+        function saveSettings() {
+            const cameraName = document.getElementById('cameraName').value;
+            const resolution = document.getElementById('cameraResolution').value;
+            const motionDetection = document.getElementById('motionDetection').checked;
+            
+            // Update camera name in UI
+            const cameraElement = document.querySelector(`[data-camera-id="${currentCameraId}"]`);
+            if (cameraElement) {
+                const nameElement = cameraElement.querySelector('h4');
+                nameElement.textContent = cameraName;
+                // Update the current camera name display
+                document.getElementById('currentCameraName').textContent = `Current name: ${cameraName}`;
+            }
+            
+            closeSettings();
+        }
+
+        // Function to create overlay
+        function createOverlay() {
+            const overlay = document.createElement('div');
+            overlay.className = 'overlay';
+            overlay.onclick = closeSettings;
+            return overlay;
+        }
+
+        // Function to show add camera modal
+        function showAddCameraModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 class="text-lg font-semibold mb-4">Add New Camera</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Camera Name</label>
+                            <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="newCameraName" placeholder="Enter camera name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Camera Type</label>
+                            <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="cameraType">
+                                <option value="laptop">Laptop Camera</option>
+                                <option value="ip">IP Camera</option>
+                                <option value="usb">USB Camera</option>
+                            </select>
+                        </div>
+                        <div id="ipCameraFields" class="hidden">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">IP Address</label>
+                                <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="ipAddress" placeholder="e.g., 192.168.1.100">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Port</label>
+                                <input type="number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="port" placeholder="e.g., 8080">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button onclick="closeAddCameraModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Cancel</button>
+                            <button onclick="addNewCamera()" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Add Camera</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Show/hide IP camera fields based on selection
+            document.getElementById('cameraType').addEventListener('change', function(e) {
+                const ipFields = document.getElementById('ipCameraFields');
+                ipFields.classList.toggle('hidden', e.target.value !== 'ip');
+            });
+        }
+
+        // Function to close add camera modal
+        function closeAddCameraModal() {
+            const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+            if (modal) modal.remove();
+        }
+
+        // Function to add new camera
+        function addNewCamera() {
+            const name = document.getElementById('newCameraName').value;
+            const type = document.getElementById('cameraType').value;
+            
+            if (!name) {
+                alert('Please enter a camera name');
+                return;
+            }
+
+            // Create new camera element
+            const cameraGrid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3.gap-6');
+            const newCameraId = `camera${Date.now()}`;
+            
+            const newCamera = document.createElement('div');
+            newCamera.className = 'bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow duration-200';
+            newCamera.innerHTML = `
+                <div class="bg-gray-800 flex items-center justify-center text-white aspect-video rounded-t-lg overflow-hidden relative">
+                    <div class="absolute top-2 right-2">
+                        <span class="status-badge online">Active</span>
+                    </div>
+                    <video id="${newCameraId}" class="w-full h-full object-cover" autoplay playsinline></video>
+                    <div class="absolute bottom-2 left-2 flex space-x-2">
+                        <button onclick="toggleRecording('${newCameraId}')" class="control-button">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="takeSnapshot('${newCameraId}')" class="control-button">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium">${name}</h4>
+                        <span class="status-badge online">Online</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-3">${type === 'laptop' ? 'Laptop Camera' : type === 'ip' ? 'IP Camera' : 'USB Camera'}</p>
+                    <div class="flex space-x-2">
+                        <button class="flex-1 bg-primary-600 text-white py-2 px-3 rounded text-sm hover:bg-primary-700 transition-colors duration-200" onclick="toggleFullscreen('${newCameraId}')">View</button>
+                        <button class="flex-1 bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-300 transition-colors duration-200" onclick="showSettings('${newCameraId}')">Settings</button>
+                    </div>
+                </div>
+            `;
+            
+            cameraGrid.appendChild(newCamera);
+            
+            // Initialize camera stream
+            if (type === 'laptop') {
+                initializeCameraStream(newCameraId);
+            }
+            
+            closeAddCameraModal();
+        }
+
+        // Function to show system settings
+        function showSystemSettings() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 class="text-lg font-semibold mb-4">System Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">System Name</label>
+                            <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="systemName" value="Security Camera System">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Alert Sound</label>
+                            <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="alertSound">
+                                <option value="default">Default</option>
+                                <option value="siren">Siren</option>
+                                <option value="bell">Bell</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Alert Duration</label>
+                            <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="alertDuration">
+                                <option value="5">5 seconds</option>
+                                <option value="10">10 seconds</option>
+                                <option value="15">15 seconds</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Storage Location</label>
+                            <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" id="storageLocation" value="Local Storage">
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button onclick="closeSystemSettings()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+                            <button onclick="saveSystemSettings()" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Save</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Function to close system settings
+        function closeSystemSettings() {
+            const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+            if (modal) modal.remove();
+        }
+
+        // Function to save system settings
+        function saveSystemSettings() {
+            const systemName = document.getElementById('systemName').value;
+            const alertSound = document.getElementById('alertSound').value;
+            const alertDuration = document.getElementById('alertDuration').value;
+            const storageLocation = document.getElementById('storageLocation').value;
+            
+            // Update system name in the header
+            document.querySelector('h1').textContent = systemName;
+            
+            // Save settings to localStorage
+            localStorage.setItem('systemSettings', JSON.stringify({
+                systemName,
+                alertSound,
+                alertDuration,
+                storageLocation
+            }));
+            
+            closeSystemSettings();
+        }
+
+        // Initialize camera streams and face detection
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load face detection model
+            await loadModel();
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        facingMode: "user"
+                    },
+                    audio: false
+                });
+
+                const cameras = ['frontDoorCamera', 'backYardCamera', 'garageCamera'];
+                cameras.forEach(cameraId => {
+                    const video = document.getElementById(cameraId);
+                    video.srcObject = stream;
+                    
+                    // Create canvas for face detection
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.style.display = 'none';
+                    video.parentElement.appendChild(canvas);
+                    
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        
+                        // Start face detection with proper timing
+                        let detectionInterval = null;
+                        
+                        const startDetection = () => {
+                            if (!detectionInterval) {
+                                detectionInterval = setInterval(() => {
+                                    detectFaces(video, canvas, cameraId);
+                                }, 100);
+                            }
+                        };
+                        
+                        const stopDetection = () => {
+                            if (detectionInterval) {
+                                clearInterval(detectionInterval);
+                                detectionInterval = null;
+                            }
+                        };
+                        
+                        // Start detection when video starts playing
+                        video.addEventListener('play', startDetection);
+                        
+                        // Stop detection when video pauses
+                        video.addEventListener('pause', stopDetection);
+                        
+                        // Start initial detection
+                        startDetection();
+                    };
+                });
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Could not access camera. Please ensure you have granted camera permissions.');
+            }
+        });
+
+        // Function to initialize camera stream for new cameras
+        async function initializeCameraStream(cameraId) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        facingMode: "user"
+                    },
+                    audio: false
+                });
+
+                const video = document.getElementById(cameraId);
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    
+                    // Create canvas for face detection
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.style.display = 'none';
+                    video.parentElement.appendChild(canvas);
+                    
+                    // Start face detection
+                    let detectionInterval = null;
+                    
+                    const startDetection = () => {
+                        if (!detectionInterval) {
+                            detectionInterval = setInterval(() => {
+                                detectFaces(video, canvas, cameraId);
+                            }, 100);
+                        }
+                    };
+                    
+                    const stopDetection = () => {
+                        if (detectionInterval) {
+                            clearInterval(detectionInterval);
+                            detectionInterval = null;
+                        }
+                    };
+                    
+                    video.addEventListener('play', startDetection);
+                    video.addEventListener('pause', stopDetection);
+                    
+                    startDetection();
+                };
+            } catch (err) {
+                console.error('Error initializing camera stream:', err);
+            }
+        }
+
+        // Function to stop recording on all cameras
+        function stopAllRecordings() {
+            const cameras = ['frontDoorCamera', 'backYardCamera', 'garageCamera'];
+            cameras.forEach(cameraId => {
+                const video = document.getElementById(cameraId);
+                if (video.recording) {
+                    stopRecording(cameraId);
+                    const button = video.parentElement.querySelector('button[onclick*="toggleRecording"]');
+                    if (button) {
+                        button.classList.remove('bg-red-500');
+                        button.innerHTML = `
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        `;
+                    }
+                }
+            });
+            
+            // Show notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>All recordings stopped</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Dark mode functionality
+        function initDarkMode() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            
+            // Check for saved theme preference or use system preference
+            const currentTheme = localStorage.getItem('theme') || (prefersDarkScheme.matches ? 'dark' : 'light');
+            document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+            
+            // Update button icon based on current theme
+            updateDarkModeIcon(currentTheme === 'dark');
+            
+            darkModeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                updateDarkModeIcon(isDark);
+            });
+        }
+        
+        function updateDarkModeIcon(isDark) {
+            const icon = document.querySelector('#darkModeToggle svg');
+            if (isDark) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />';
+            }
+        }
+
+        // Initialize dark mode when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initDarkMode();
+            // ... existing DOMContentLoaded code ...
+        });
+
+        // Update the sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            let isTransitioning = false;
+
+            // Initialize sidebar as collapsed
+            sidebar.classList.remove('expanded');
+            mainContent.classList.remove('expanded');
+
+            function toggleSidebar() {
+                if (isTransitioning) return;
+                isTransitioning = true;
+
+                sidebar.classList.toggle('expanded');
+                mainContent.classList.toggle('expanded');
+
+                // Reset transitioning state after animation completes
+                setTimeout(() => {
+                    isTransitioning = false;
+                }, 300); // Match the transition duration
+            }
+
+            sidebarToggle.addEventListener('click', toggleSidebar);
+
+            // Handle mobile view with debounce
+            let resizeTimeout;
+            function handleResize() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (window.innerWidth <= 768) {
+                        if (sidebar.classList.contains('expanded')) {
+                            sidebar.classList.remove('expanded');
+                            mainContent.classList.remove('expanded');
+                        }
+                    }
+                }, 100);
+            }
+
+            window.addEventListener('resize', handleResize);
+            handleResize(); // Initial check
+        });
+    </script>
+</body>
+</html>
